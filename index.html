@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:,">
+<title>Creative Canvas — What It Is &amp; How It Works</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  color-scheme:dark;
+  /* Creative Canvas dashboard palette — taken from the app itself */
+  --bg:#0B1526;
+  --panel:#1B2A47;      /* dashboard window body */
+  --panel2:#24365E;     /* raised tile / button */
+  --field:#101C33;      /* input field */
+  --stage:#070C16;      /* canvas stage black */
+  --line:#3D5A82;       /* steel-blue border */
+  --cyan:#2DD4E8;       /* dashboard accent line */
+  --blue:#2563EB;       /* active / primary button */
+  --green:#22C55E;      /* ON */
+  --ink:#EAF1FA;
+  --ink2:#A9BCD6;
+  --radius:14px;
+}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{max-width:920px;margin:0 auto;padding:14px 12px 28px}
+
+/* ============ DASHBOARD WINDOW (the one panel style, used everywhere) ============ */
+.dash{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dash-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:2px solid var(--cyan);background:var(--panel)}
+.dash-head .grip{color:var(--ink2);font-size:.8rem;letter-spacing:.1em;flex:none}
+.dash-head .ttl{font-size:.78rem;font-weight:700;letter-spacing:.14em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-head .sp{flex:1}
+.hbtn{flex:none;width:26px;height:26px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--ink);font-size:.85rem;line-height:1}
+.on-pill{flex:none;background:var(--green);color:#fff;border-radius:999px;padding:4px 10px;font-size:.68rem;font-weight:700;letter-spacing:.03em}
+.float-btn{flex:none;background:var(--blue);color:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:.7rem;font-weight:700}
+
+/* ============ HEADER — chalkboard + chalk logo + mascot, together ============ */
+/* Top window themed to the chalkboard background's own color (#23272E, sampled from chalkboard.png) */
+header.dash,header.dash .dash-head{background:#23272E}
+.board{background:#12161C url("assets/chalkboard.png") center/cover no-repeat;padding:22px 16px 18px}
+.board-row{display:flex;align-items:center;justify-content:center;gap:18px;max-width:640px;margin:0 auto;background:transparent}
+.board-logo{flex:1 1 auto;min-width:0;max-width:480px;height:auto;display:block;background:transparent}
+.board-dog{flex:none;width:118px;height:auto;display:block;mix-blend-mode:screen}
+@media(max-width:560px){.board-dog{width:84px}.board{padding:16px 12px 14px}}
+.board-line{margin:14px auto 0;max-width:58ch;text-align:center;color:#D8E4F2;font-size:.95rem;line-height:1.55}
+.board-line b{color:#fff}
+
+/* ============ DRAWING ============ */
+.drawing-wrap{margin-top:16px}
+.drawing-wrap .dash-body{padding:14px 12px 10px}
+.drawing-intro{margin:0 auto 14px;max-width:62ch;text-align:center;color:var(--ink2);font-size:.97rem;line-height:1.6}
+.drawing-intro b{color:var(--ink)}
+.drawing-wrap svg{width:100%;height:auto;display:block}
+.drawing-callouts{margin-top:14px}
+.drawing-callouts-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;color:var(--ink2);margin:0 0 10px;text-align:left}
+.fig-cap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding:9px 12px;font-size:.74rem;letter-spacing:.06em;color:var(--ink2);background:var(--panel)}
+.fig-cap b{color:var(--ink);font-weight:700}
+
+/* ============ TOOLBAR — dashboard tab bar, opens the windows ============ */
+.toolbar{margin-top:14px}
+.toolbar .dash-body{padding:12px}
+.toolbar-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;color:var(--ink2);margin:0 0 10px}
+.tog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(min-width:720px){.tog-grid{grid-template-columns:repeat(6,1fr)}}
+.tog{appearance:none;cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 8px 9px;color:var(--ink);font-family:inherit;text-align:center;transition:background .12s ease}
+.tog:hover{background:#2C4470}
+.tog .t-ico{display:grid;place-items:center;width:38px;height:38px;margin:0 auto 7px;background:var(--panel);border:1px solid var(--line);border-radius:9px;font-size:1.1rem}
+.tog b{display:block;font-size:.8rem;font-weight:700;line-height:1.2}
+.tog .t-state{display:block;margin-top:5px;font-size:.6rem;font-weight:700;letter-spacing:.08em;color:var(--ink2)}
+.tog[aria-expanded="true"]{background:var(--blue);border-color:var(--cyan)}
+.tog[aria-expanded="true"] .t-ico{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}
+.tog[aria-expanded="true"] .t-state{color:#BFEFFF}
+.toolbar-note{margin:10px 2px 0;color:var(--ink2);font-size:.85rem;line-height:1.55;text-align:center}
+.toolbar-note b{color:var(--ink)}
+
+/* ============ WEBVIEWER — static window below the guide ============ */
+/* Web viewer window themed gray */
+.webviewer-wrap,.webviewer-wrap .dash-head,.webviewer-wrap .fig-cap{background:#3B4048}
+.webviewer-wrap .mini{background:#484F59;border-color:#5C646F}
+.webviewer-wrap .mini .ico{background:#3B4048;border-color:#5C646F}
+.webviewer-wrap{margin-top:14px}
+.webviewer-wrap .dash-body{padding:14px 12px 16px}
+.webviewer-intro{margin:0 auto 14px;max-width:62ch;text-align:center;color:var(--ink2);font-size:.97rem;line-height:1.6}
+.webviewer-intro b{color:var(--ink)}
+.webviewer-steps{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:600px){.webviewer-steps{grid-template-columns:1fr 1fr}}
+.webviewer-note{margin:12px 2px 0;color:var(--ink2);line-height:1.65;font-size:.93rem;text-align:center}
+.webviewer-note b{color:var(--ink)}
+
+/* ============ DOWNLOAD — above the guide ============ */
+/* Download window themed a slightly lighter shade of blue than the dashboard panel */
+.download-wrap,.download-wrap .dash-head{background:#2E4472}
+.download-wrap{margin-top:14px}
+.download-wrap .dash-body{padding:16px 14px 18px;text-align:center}
+.download-intro{margin:0 auto 6px;max-width:58ch;color:var(--ink2);font-size:.97rem;line-height:1.6}
+.download-intro b{color:var(--ink)}
+.download-meta{margin:0 0 14px;font-size:.74rem;letter-spacing:.06em;color:var(--ink2)}
+.install-btn{appearance:none;cursor:pointer;background:var(--blue);color:#fff;border:1px solid var(--cyan);border-radius:10px;padding:13px 26px;font-family:inherit;font-size:1rem;font-weight:700}
+.install-btn:hover{background:#1D4FD0}
+.dl-reveal{margin-top:6px}
+.dl-ready{margin:0 0 12px;color:var(--ink2);line-height:1.6;font-size:.94rem}.dl-ready b{color:var(--ink)}
+.dl-btn{display:inline-block;background:var(--green);color:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 26px;font-size:1rem;font-weight:700;text-decoration:none}
+.dl-btn:hover{background:#1BA34C}
+.dl-note{margin:12px auto 0;max-width:56ch;color:var(--ink2);font-size:.85rem;line-height:1.55}
+.terms-list{margin:0;padding-left:20px;color:var(--ink2);line-height:1.65;font-size:.93rem;display:grid;gap:9px}
+.terms-list b{color:var(--ink)}
+.terms-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.terms-accept{flex:1 1 200px;appearance:none;cursor:pointer;background:var(--green);color:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-family:inherit;font-size:.95rem;font-weight:700}
+.terms-decline{flex:1 1 140px;appearance:none;cursor:pointer;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-family:inherit;font-size:.95rem;font-weight:700}
+
+/* ============ STATUS BAR — like the app's bottom bar ============ */
+.statusbar{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.74rem;letter-spacing:.05em;color:var(--ink2)}
+.statusbar .on{color:var(--green);font-weight:700}
+.statusbar .mem{margin-left:auto}
+
+/* ============ POP-UP WINDOWS — dashboard panels ============ */
+.win{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,94vw);max-height:86vh;display:none;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+.win.open{display:flex}
+.win-head{display:flex;align-items:center;gap:8px;background:var(--panel);border-bottom:2px solid var(--cyan);padding:9px 12px;cursor:grab;touch-action:none;flex:none}
+.win-head:active{cursor:grabbing}
+.win-head .grip{color:var(--ink2);font-size:.8rem;letter-spacing:.1em;flex:none}
+.win-head h3{margin:0;font-size:.78rem;letter-spacing:.12em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.win-close{margin-left:auto;flex:none;appearance:none;cursor:pointer;width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:1rem;line-height:1}
+.win-close:hover{background:#B3372F;color:#fff}
+.win-body{overflow-y:auto;padding:16px 14px 18px;-webkit-overflow-scrolling:touch;background:var(--panel)}
+.win-intro{margin:0 0 14px;color:var(--ink2);line-height:1.6;font-size:.94rem}.win-intro b{color:var(--ink)}
+.win-note{color:var(--ink2);line-height:1.65;font-size:.93rem;margin:12px 2px 0}.win-note b{color:var(--ink)}
+
+.callouts{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.callouts{grid-template-columns:1fr 1fr}}
+.callout{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+.callout-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.ball{width:34px;height:34px;flex:none;border-radius:9px;background:var(--field);border:1px solid var(--cyan);color:var(--cyan);display:grid;place-items:center;font-weight:700;font-size:1rem}
+.callout h4{margin:0;font-size:1rem;font-weight:700;line-height:1.2}
+.callout .where{font-size:.62rem;letter-spacing:.1em;font-weight:700;color:var(--ink2)}
+.callout p{margin:0;color:var(--ink2);line-height:1.6;font-size:.92rem}.callout p b{color:var(--ink)}
+.say{margin-top:10px;background:var(--field);border:1px dashed var(--line);border-radius:8px;padding:8px 11px;line-height:1.5;font-size:.92rem;color:var(--ink)}
+.say::before{content:"SAY IT LIKE THIS — ";font-size:.62rem;letter-spacing:.08em;font-weight:700;color:var(--cyan)}
+
+.grid2{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.grid2{grid-template-columns:1fr 1fr}}
+.mini{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+.mini-top{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.ico{width:38px;height:38px;flex:none;border:1px solid var(--line);border-radius:9px;display:grid;place-items:center;font-size:1.1rem;background:var(--panel)}
+.ico.on{background:var(--blue);color:#fff}
+.mini h4{margin:0;font-size:.98rem;font-weight:700}
+.mini .no{margin-left:auto;font-size:.62rem;letter-spacing:.08em;font-weight:700;color:var(--ink2)}
+.mini p{margin:0;color:var(--ink2);line-height:1.6;font-size:.91rem}.mini p b{color:var(--ink)}
+
+.steps{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.step{display:grid;grid-template-columns:48px 1fr;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}
+.step .n{font-weight:700;font-size:1.15rem;display:flex;justify-content:center;padding-top:13px;color:#fff;background:var(--blue);border-right:1px solid var(--line)}
+.step .b{padding:12px 13px}.step h4{margin:0 0 3px;font-size:1rem;font-weight:700}.step p{margin:0;color:var(--ink2);line-height:1.6;font-size:.92rem}.step p b{color:var(--ink)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.pills span{font-size:.74rem;font-weight:600;border:1px solid var(--line);background:var(--field);border-radius:7px;padding:5px 10px;color:var(--ink2)}.pills span.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.flow{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.flow{grid-template-columns:1fr 1fr}}
+.flow-card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+.flow-card .fn{font-size:.64rem;letter-spacing:.1em;color:var(--cyan);font-weight:700}
+.flow-card b{display:block;font-size:1.02rem;font-weight:700;margin:5px 0 3px}
+.flow-card p{margin:0;color:var(--ink2);line-height:1.6;font-size:.91rem}.flow-card p b{display:inline;font-size:.91rem;color:var(--ink)}
+
+.checks{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.checks{grid-template-columns:1fr 1fr}}
+.check{display:flex;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;align-items:flex-start}
+.tick{width:26px;height:26px;flex:none;border-radius:7px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.85rem}
+.check h4{margin:0 0 3px;font-size:.98rem;font-weight:700}.check p{margin:0;color:var(--ink2);line-height:1.6;font-size:.9rem}.check p b{color:var(--ink)}
+
+.titleblock{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;grid-template-columns:1fr}
+.titleblock div{padding:10px 13px;border-bottom:1px solid var(--line)}.titleblock div:last-child{border-bottom:0}
+.titleblock span{display:block;font-size:.62rem;letter-spacing:.12em;font-weight:700;color:var(--cyan)}.titleblock b{font-size:.92rem}
+
+a{color:var(--cyan)} :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.tog{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER — one dashboard window: chalkboard, chalk logo & mascot together -->
+  <header class="dash">
+    <div class="dash-head">
+      <span class="grip">⠿</span><span class="ttl">CREATIVE CANVAS</span>
+      <span class="sp"></span>
+    </div>
+    <div class="board">
+      <div class="board-row">
+        <img class="board-logo" src="assets/chalk-logo.png" alt="Creative Canvas — chalk logo: an easel drawn in chalk next to the words Creative Canvas" width="832" height="448">
+        <img class="board-dog" src="assets/chalk-dog.gif" alt="" width="320" height="216">
+      </div>
+      <p class="board-line">A tiny TV studio for Discord. Put your <b>camera</b>, a <b>website</b>, a <b>video</b> and <b>chat words</b> on one stage — Creative Canvas sends the whole stage to Discord as <b>one camera</b>.</p>
+    </div>
+  </header>
+
+  <!-- THE PICTURE — drawn like the app's own dashboard elements -->
+  <figure class="dash drawing-wrap" style="margin-left:0;margin-right:0;margin-bottom:0">
+    <div class="dash-head">
+      <span class="grip">⠿</span><span class="ttl">THE APP — DASHBOARD DOCKED TO CANVAS</span>
+      <span class="sp"></span>
+    </div>
+    <div class="dash-body">
+      <p class="drawing-intro">Left is the <b>Dashboard</b> — the remote control. Right is the <b>Canvas</b> — the stage. They are docked together and always move as one. Find a number in the picture, then read what it means in the descriptions right below it.</p>
+      <svg viewBox="0 0 900 520" role="img" aria-label="Drawing of Creative Canvas drawn like the app itself. A dark dashboard panel is docked to the left edge of a dark canvas window. Numbered markers 1 to 6 point to the dashboard, its tab buttons, its settings, the canvas top bar, the stage, and the add row.">
+        <!-- docked pill -->
+        <rect x="345" y="14" width="210" height="30" rx="15" fill="#1B2A47" stroke="#3D5A82"/>
+        <circle cx="365" cy="29" r="4" fill="#22C55E"/>
+        <text x="378" y="34" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700" letter-spacing="1" fill="#EAF1FA">DOCKED — ONE UNIT</text>
+        <line x1="450" y1="44" x2="450" y2="66" stroke="#3D5A82" stroke-width="2" stroke-dasharray="4 4"/>
+
+        <!-- ONE joined unit -->
+        <rect x="170" y="66" width="560" height="372" rx="14" fill="#1B2A47" stroke="#3D5A82" stroke-width="2"/>
+        <line x1="420" y1="66" x2="420" y2="438" stroke="#3D5A82" stroke-width="2"/>
+
+        <!-- DASHBOARD side -->
+        <g font-family="Segoe UI, sans-serif">
+          <line x1="184" y1="102" x2="406" y2="102" stroke="#2DD4E8" stroke-width="2"/>
+          <text x="184" y="90" font-size="10" fill="#A9BCD6">⠿</text>
+          <text x="204" y="91" font-size="12" font-weight="700" letter-spacing="2" fill="#EAF1FA">DASHBOARD</text>
+          <rect x="318" y="76" width="22" height="20" rx="6" fill="#24365E" stroke="#3D5A82"/><text x="329" y="90" fill="#EAF1FA" text-anchor="middle" font-size="11">−</text>
+          <rect x="344" y="76" width="22" height="20" rx="6" fill="#24365E" stroke="#3D5A82"/><text x="355" y="90" fill="#EAF1FA" text-anchor="middle" font-size="11">+</text>
+          <rect x="370" y="76" width="36" height="20" rx="10" fill="#22C55E"/><text x="388" y="90" fill="#fff" text-anchor="middle" font-size="9" font-weight="700">● ON</text>
+          <!-- tab row -->
+          <g>
+            <rect x="184" y="114" width="34" height="34" rx="8" fill="#24365E" stroke="#3D5A82"/><text x="201" y="137" text-anchor="middle" font-size="15">✎</text>
+            <rect x="222" y="114" width="34" height="34" rx="8" fill="#24365E" stroke="#3D5A82"/><text x="239" y="137" text-anchor="middle" font-size="14">🎬</text>
+            <rect x="260" y="114" width="34" height="34" rx="8" fill="#24365E" stroke="#3D5A82"/><text x="277" y="137" text-anchor="middle" font-size="14">🖼</text>
+            <rect x="298" y="114" width="34" height="34" rx="8" fill="#24365E" stroke="#3D5A82"/><text x="315" y="137" text-anchor="middle" font-size="14">📊</text>
+            <rect x="336" y="114" width="34" height="34" rx="8" fill="#2563EB" stroke="#2DD4E8"/><text x="353" y="137" text-anchor="middle" font-size="14">⚙</text>
+            <rect x="374" y="114" width="32" height="34" rx="8" fill="#24365E" stroke="#3D5A82"/><text x="390" y="137" text-anchor="middle" font-size="14">🎨</text>
+          </g>
+          <text x="184" y="166" font-size="9" font-weight="700" letter-spacing="1" fill="#A9BCD6">② PICK A JOB — ③ CHANGE IT BELOW</text>
+          <!-- settings -->
+          <text x="184" y="192" font-size="13" font-weight="700" fill="#EAF1FA">Settings: Web Source</text>
+          <text x="398" y="192" font-size="13" fill="#A9BCD6" text-anchor="end">×</text>
+          <text x="184" y="212" font-size="8.5" font-weight="700" letter-spacing="1.5" fill="#A9BCD6">NAME</text>
+          <rect x="184" y="218" width="222" height="26" rx="7" fill="#101C33" stroke="#3D5A82"/><text x="194" y="235" font-size="11" fill="#EAF1FA">Web Source</text>
+          <text x="184" y="262" font-size="8.5" font-weight="700" letter-spacing="1.5" fill="#A9BCD6">WEBSITE URL</text>
+          <rect x="184" y="268" width="158" height="26" rx="7" fill="#101C33" stroke="#3D5A82"/><text x="194" y="285" font-size="10" fill="#EAF1FA">vdo.ninja link…</text>
+          <rect x="348" y="268" width="58" height="26" rx="7" fill="#2563EB"/><text x="377" y="285" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">Apply</text>
+          <rect x="184" y="302" width="106" height="24" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="237" y="318" font-size="9" fill="#EAF1FA" text-anchor="middle">↗ Open in a new tab</text>
+          <rect x="296" y="302" width="110" height="24" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="351" y="318" font-size="9" fill="#EAF1FA" text-anchor="middle">↻ Reload source</text>
+          <text x="184" y="346" font-size="8.5" font-weight="700" letter-spacing="1.5" fill="#A9BCD6">SHARE TO VIRTUAL CAMERA</text>
+          <rect x="184" y="352" width="106" height="24" rx="7" fill="#2563EB"/><text x="237" y="368" font-size="9.5" font-weight="700" fill="#fff" text-anchor="middle">Off</text>
+          <rect x="296" y="352" width="110" height="24" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="351" y="368" font-size="9.5" fill="#EAF1FA" text-anchor="middle">Live to feed</text>
+          <rect x="184" y="386" width="14" height="14" rx="4" fill="#2563EB"/><text x="191" y="397" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">✓</text>
+          <text x="204" y="397" font-size="10" fill="#EAF1FA">Mirror website to the broadcast</text>
+          <text x="184" y="420" font-size="9" fill="#A9BCD6">Zoom, move &amp; touch switch live here too</text>
+        </g>
+
+        <!-- CANVAS side -->
+        <g font-family="Segoe UI, sans-serif">
+          <line x1="434" y1="102" x2="716" y2="102" stroke="#2DD4E8" stroke-width="2"/>
+          <circle cx="442" cy="86" r="4" fill="#22C55E"/>
+          <text x="452" y="91" font-size="12" font-weight="700" fill="#EAF1FA">Creative Canvas</text>
+          <rect x="600" y="76" width="30" height="20" rx="6" fill="#24365E" stroke="#3D5A82"/><text x="615" y="90" text-anchor="middle" font-size="11">🌙</text>
+          <rect x="634" y="76" width="44" height="20" rx="6" fill="#24365E" stroke="#3D5A82"/><text x="656" y="90" text-anchor="middle" font-size="9.5" fill="#EAF1FA">100%</text>
+          <rect x="682" y="76" width="30" height="20" rx="6" fill="#24365E" stroke="#3D5A82"/><text x="697" y="90" text-anchor="middle" font-size="11" fill="#EAF1FA">⛶</text>
+          <!-- top load bar -->
+          <rect x="434" y="114" width="96" height="24" rx="7" fill="#101C33" stroke="#3D5A82"/><text x="442" y="130" font-size="9.5" fill="#EAF1FA">🌙 Dark (Night) ▾</text>
+          <rect x="534" y="114" width="110" height="24" rx="7" fill="#101C33" stroke="#3D5A82"/><text x="542" y="130" font-size="9.5" fill="#A9BCD6">Website URL…</text>
+          <rect x="648" y="114" width="64" height="24" rx="7" fill="#2563EB"/><text x="680" y="130" font-size="9.5" font-weight="700" fill="#fff" text-anchor="middle">🌐 Load</text>
+          <rect x="434" y="144" width="120" height="22" rx="7" fill="#101C33" stroke="#3D5A82"/><text x="442" y="159" font-size="9.5" fill="#EAF1FA">720p · 1280×720 ▾</text>
+          <rect x="566" y="144" width="34" height="22" rx="11" fill="#24365E" stroke="#3D5A82"/><circle cx="577" cy="155" r="7" fill="#EAF1FA"/>
+          <rect x="606" y="144" width="34" height="22" rx="11" fill="#2563EB" stroke="#3D5A82"/><circle cx="629" cy="155" r="7" fill="#fff"/>
+          <text x="648" y="159" font-size="9" fill="#A9BCD6">④ paste a link, press Load</text>
+          <!-- stage -->
+          <rect x="434" y="176" width="278" height="196" rx="8" fill="#070C16" stroke="#3D5A82"/>
+          <rect x="446" y="186" width="104" height="20" rx="5" fill="#24365E"/><text x="453" y="200" font-size="8.5" font-weight="700" fill="#2DD4E8">WEB · VDO.NINJA</text>
+          <!-- person on camera (simple silhouette) -->
+          <rect x="540" y="216" width="118" height="96" rx="8" fill="#2A3648"/>
+          <circle cx="599" cy="254" r="19" fill="#8A97A8"/>
+          <path d="M573 312 a26 20 0 0 1 52 0 Z" fill="#8A97A8"/>
+          <rect x="446" y="322" width="168" height="38" rx="7" fill="#101C33" stroke="#3D5A82"/>
+          <text x="455" y="338" font-size="9.5" fill="#EAF1FA"><tspan font-weight="700" fill="#2DD4E8">Nova</tspan> · chat words on top</text>
+          <text x="455" y="352" font-size="8.5" fill="#A9BCD6">Big text · easy to read</text>
+          <text x="712" y="392" font-size="8.5" fill="#A9BCD6" text-anchor="end">⑤ THE STAGE — WHAT FRIENDS SEE</text>
+          <!-- bottom toolbar -->
+          <g>
+            <rect x="458" y="398" width="28" height="28" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="472" y="417" text-anchor="middle" font-size="13">🖼</text>
+            <rect x="490" y="398" width="28" height="28" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="504" y="417" text-anchor="middle" font-size="13">📄</text>
+            <rect x="522" y="398" width="28" height="28" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="536" y="417" text-anchor="middle" font-size="13">🎬</text>
+            <rect x="554" y="398" width="28" height="28" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="568" y="417" text-anchor="middle" font-size="13">⚙</text>
+            <circle cx="606" cy="412" r="15" fill="#2563EB"/><text x="606" y="418" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">+</text>
+            <rect x="626" y="398" width="28" height="28" rx="7" fill="#24365E" stroke="#3D5A82"/><text x="640" y="417" text-anchor="middle" font-size="13">🔗</text>
+          </g>
+          <text x="712" y="417" font-size="8.5" fill="#A9BCD6" text-anchor="end">MEM 9MB</text>
+        </g>
+
+        <!-- callout markers -->
+        <g font-family="Segoe UI, sans-serif" font-weight="700">
+          <g><circle cx="96" cy="86" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="96" y="92" fill="#2DD4E8" text-anchor="middle" font-size="15">1</text><line x1="115" y1="86" x2="168" y2="86" stroke="#3D5A82" stroke-width="2"/></g>
+          <g><circle cx="96" cy="131" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="96" y="137" fill="#2DD4E8" text-anchor="middle" font-size="15">2</text><line x1="115" y1="131" x2="168" y2="131" stroke="#3D5A82" stroke-width="2"/></g>
+          <g><circle cx="96" cy="285" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="96" y="291" fill="#2DD4E8" text-anchor="middle" font-size="15">3</text><line x1="115" y1="285" x2="168" y2="285" stroke="#3D5A82" stroke-width="2"/></g>
+          <g><circle cx="804" cy="126" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="804" y="132" fill="#2DD4E8" text-anchor="middle" font-size="15">4</text><line x1="785" y1="126" x2="732" y2="126" stroke="#3D5A82" stroke-width="2"/></g>
+          <g><circle cx="804" cy="274" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="804" y="280" fill="#2DD4E8" text-anchor="middle" font-size="15">5</text><line x1="785" y1="274" x2="732" y2="274" stroke="#3D5A82" stroke-width="2"/></g>
+          <g><circle cx="804" cy="412" r="19" fill="#1B2A47" stroke="#2DD4E8" stroke-width="2"/><text x="804" y="418" fill="#2DD4E8" text-anchor="middle" font-size="15">6</text><line x1="785" y1="412" x2="732" y2="412" stroke="#3D5A82" stroke-width="2"/></g>
+        </g>
+        <text x="450" y="478" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#A9BCD6">It shrinks to fit small and split screens — nothing falls off the edge.</text>
+        <text x="450" y="502" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#A9BCD6">Find a number here → read what it means just below.</text>
+      </svg>
+      <div class="drawing-callouts">
+        <p class="drawing-callouts-label">WHAT THE NUMBERS MEAN</p>
+        <div class="callouts">
+          <article class="callout"><div class="callout-top"><span class="ball">1</span><div><div class="where">LEFT · TOP</div><h4>The remote control</h4></div></div><p>This is the <b>Dashboard</b>. It sticks to the left side of the stage. Move the stage — the remote comes too. Make the stage bigger or smaller — the remote shrinks or grows to fit.</p></article>
+          <article class="callout"><div class="callout-top"><span class="ball">2</span><div><div class="where">LEFT · TAB ROW</div><h4>Pick a job</h4></div></div><p>These 6 little buttons each do <b>one job</b> — words, video, pictures, numbers, settings, or colours. The <b>blue one</b> is open right now.</p></article>
+          <article class="callout"><div class="callout-top"><span class="ball">3</span><div><div class="where">LEFT · UNDER THE TABS</div><h4>Change the settings</h4></div></div><p>This is where you <b>change the thing you picked</b>. In the picture, it is changing a website. Give it a name, paste its link, and choose how Discord sees it.</p></article>
+          <article class="callout"><div class="callout-top"><span class="ball">4</span><div><div class="where">RIGHT · TOP BAR</div><h4>Add a website</h4></div></div><p>Paste a link in the box. Press <b>Load</b>. The website appears on the stage. You can also pick the dark <b>Night</b> look and the picture size — <b>720p</b>, big and clear.</p></article>
+          <article class="callout"><div class="callout-top"><span class="ball">5</span><div><div class="where">RIGHT · THE BIG BLACK BOX</div><h4>The stage</h4></div></div><p>This is <b>what your friends will see</b>. Everything is a box on the stage — you, a website, a video, chat words. Drag a box to move it. Pull its corner to make it bigger.</p></article>
+          <article class="callout"><div class="callout-top"><span class="ball">6</span><div><div class="where">RIGHT · BOTTOM ROW</div><h4>Add more things</h4></div></div><p>Tap the big <b>+</b> to add something new. The tiny <b>MEM</b> word tells you how much memory the app is using.</p></article>
+        </div>
+      </div>
+    </div>
+    <figcaption class="fig-cap"><span><b>FIG. 1</b> · THE WHOLE APP IN ONE PICTURE</span><span>DASHBOARD ← DOCKED → CANVAS</span></figcaption>
+  </figure>
+
+  <!-- DOWNLOAD — above the guide: terms first, then the APK download -->
+  <section class="dash download-wrap" aria-label="Download Creative Canvas">
+    <div class="dash-head">
+      <span class="grip">⠿</span><span class="ttl">DOWNLOAD — GET THE APP</span>
+      <span class="sp"></span>
+    </div>
+    <div class="dash-body">
+      <p class="download-intro">Want it on your phone? Get <b>Creative Canvas</b> for Android and run the whole studio yourself.</p>
+      <p class="download-meta">CREATIVE CANVAS v3.2 · ANDROID APK · 1.1 MB</p>
+      <button type="button" class="install-btn" id="install-open">⬇ Install / Download</button>
+      <div class="dl-reveal" id="dl-reveal" hidden>
+        <p class="dl-ready"><b>Terms accepted — you're good to go.</b> Tap the button and the APK file is yours. When it finishes, open it on your Android phone to install — your phone may ask you to allow installs from your browser, just this once.</p>
+        <a class="dl-btn" id="dl-link" href="assets/creative-canvas-v3.2.apk" download="creative-canvas-v3.2.apk">⬇ Download Creative Canvas v3.2 APK</a>
+        <p class="dl-note">Changed your mind? Nothing is installed until you open the file yourself — you can delete the download at any time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLBAR — the rest of the page lives in these dashboard windows -->
+  <section class="dash toolbar" aria-label="Open guide windows">
+    <div class="dash-head">
+      <span class="grip">⠿</span><span class="ttl">GUIDE — TAP A BUTTON, A WINDOW OPENS</span>
+      <span class="sp"></span>
+    </div>
+    <div class="dash-body">
+      <p class="toolbar-label">WINDOWS</p>
+      <div class="tog-grid" role="group" aria-label="Guide windows">
+        <button type="button" class="tog" data-win="win-numbers" aria-expanded="false" aria-controls="win-numbers"><span class="t-ico">🔢</span><b>Numbers 1–6</b><span class="t-state">TAP TO OPEN</span></button>
+        <button type="button" class="tog" data-win="win-tabs" aria-expanded="false" aria-controls="win-tabs"><span class="t-ico">⚙</span><b>The 6 Tabs</b><span class="t-state">TAP TO OPEN</span></button>
+        <button type="button" class="tog" data-win="win-settings" aria-expanded="false" aria-controls="win-settings"><span class="t-ico">🌐</span><b>Settings</b><span class="t-state">TAP TO OPEN</span></button>
+        <button type="button" class="tog" data-win="win-flow" aria-expanded="false" aria-controls="win-flow"><span class="t-ico">📺</span><b>How It Works</b><span class="t-state">TAP TO OPEN</span></button>
+        <button type="button" class="tog" data-win="win-checks" aria-expanded="false" aria-controls="win-checks"><span class="t-ico">✓</span><b>Good to Know</b><span class="t-state">TAP TO OPEN</span></button>
+        <button type="button" class="tog" data-win="win-about" aria-expanded="false" aria-controls="win-about"><span class="t-ico">🏷</span><b>About</b><span class="t-state">TAP TO OPEN</span></button>
+      </div>
+      <p class="toolbar-note">Open as many windows as you like. Drag one by its top bar, close it with its <b>×</b>, its button, or the <b>Esc</b> key. <b>Start at Numbers 1–6.</b></p>
+    </div>
+  </section>
+
+  <!-- WEBVIEWER — how any website loads, same dashboard window style -->
+  <section class="dash webviewer-wrap" aria-label="How the webviewer works">
+    <div class="dash-head">
+      <span class="grip">⠿</span><span class="ttl">WEBVIEWER — HOW ANY WEBSITE LOADS</span>
+      <span class="sp"></span>
+    </div>
+    <div class="dash-body">
+      <p class="webviewer-intro">The <b>Webviewer</b> is a tiny web browser that lives <b>inside</b> Creative Canvas. Give it a link — <b>any link</b> — and it opens that website in its own little window, right on the stage.</p>
+      <div class="webviewer-steps">
+        <article class="mini"><div class="mini-top"><span class="ico">🔗</span><h4>1. Paste a link</h4></div><p>Type or paste the website's address in the <b>Website URL</b> box at the top of the Canvas — or in the Web Source settings in the Dashboard. A YouTube link, a vdo.ninja link, a news page — <b>any website works the same way</b>.</p></article>
+        <article class="mini"><div class="mini-top"><span class="ico">🌐</span><h4>2. Press Load or Apply</h4></div><p>Press <b>Load</b> up top, or <b>Apply</b> in the settings. That tells the Webviewer: <b>“Go get this page.”</b> It fetches the website, just like a normal browser does when you open a tab.</p></article>
+        <article class="mini"><div class="mini-top"><span class="ico">🪟</span><h4>3. The site opens inside the app</h4></div><p>The website loads in a <b>small window inside the Canvas</b> — that window is called an <b>iframe</b>. The site is really there, live: videos can play, pages can scroll, and with <b>Interactive</b> switched on, your taps work on the site itself.</p></article>
+        <article class="mini"><div class="mini-top"><span class="ico">🖼</span><h4>4. It becomes a box on the stage</h4></div><p>Once loaded, the website is just <b>one box on the stage</b>, like your camera or a picture. Drag it to move it, pull its corner to resize it, and use <b>Zoom in / Zoom out</b> in its settings to make the page inside look bigger or smaller so it fits just right.</p></article>
+        <article class="mini"><div class="mini-top"><span class="ico">🪞</span><h4>5. Mirror sends it to Discord</h4></div><p>Tick <b>Mirror</b> and the app takes <b>fast photos of the Webviewer, 10 times every second</b>, and puts them on the broadcast. That is how the website — YouTube included — reaches your friends in Discord as moving video, even when a site will not share itself directly.</p></article>
+        <article class="mini"><div class="mini-top"><span class="ico">↻</span><h4>6. Stuck? Reload it</h4></div><p>If a page gets stuck or stays black, press <b>Reload source</b> to load it again, or <b>Open in a new tab</b> to see it full-size. Some sites say “no” to living inside another page — for those, the <b>Mirror</b> trick in Step 5 is the way around.</p></article>
+      </div>
+      <p class="webviewer-note">In short: <b>link in → Webviewer loads it → it sits on the stage → Discord sees it.</b> One Webviewer per Web Source — add more sources to show more websites at once.</p>
+    </div>
+    <figcaption class="fig-cap"><span><b>FIG. 2</b> · THE WEBVIEWER</span><span>PASTE A LINK · PRESS LOAD · IT'S ON THE STAGE</span></figcaption>
+  </section>
+
+  <!-- STATUS BAR -->
+  <div class="statusbar"><span class="on">● ON</span><span>CREATIVE CANVAS — WHAT IT IS &amp; HOW IT WORKS</span><span class="mem">STAGE · 720P · MEM 9MB · CPU —</span></div>
+</div>
+
+<!-- WINDOW: NUMBERS -->
+<section class="win" id="win-numbers" role="dialog" aria-modal="false" aria-labelledby="win-numbers-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-numbers-t">NUMBERS 1–6</h3><button type="button" class="win-close" data-close="win-numbers" aria-label="Close Numbers 1 to 6 window">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Start at <b>1</b> and hop to <b>6</b>. Every number in the picture has the <b>same number</b> here.</p>
+    <div class="callouts">
+      <article class="callout"><div class="callout-top"><span class="ball">1</span><div><div class="where">LEFT · TOP</div><h4>The remote control</h4></div></div><p>This is the <b>Dashboard</b>. It sticks to the left side of the stage. Move the stage — the remote comes too. Make the stage bigger or smaller — the remote shrinks or grows to fit.</p><div class="say">“The remote is stuck to the stage.”</div></article>
+      <article class="callout"><div class="callout-top"><span class="ball">2</span><div><div class="where">LEFT · TAB ROW</div><h4>Pick a job</h4></div></div><p>These 6 little buttons each do <b>one job</b> — words, video, pictures, numbers, settings, or colours. The <b>blue one</b> is open right now.</p><div class="say">“Tap a button, pick a job.”</div></article>
+      <article class="callout"><div class="callout-top"><span class="ball">3</span><div><div class="where">LEFT · UNDER THE TABS</div><h4>Change the settings</h4></div></div><p>This is where you <b>change the thing you picked</b>. In the picture, it is changing a website. Give it a name, paste its link, and choose how Discord sees it.</p><div class="say">“Pick a thing, then change it here.”</div></article>
+      <article class="callout"><div class="callout-top"><span class="ball">4</span><div><div class="where">RIGHT · TOP BAR</div><h4>Add a website</h4></div></div><p>Paste a link in the box. Press <b>Load</b>. The website appears on the stage. You can also pick the dark <b>Night</b> look and the picture size — <b>720p</b>, big and clear.</p><div class="say">“Paste a link. Press Load.”</div></article>
+      <article class="callout"><div class="callout-top"><span class="ball">5</span><div><div class="where">RIGHT · THE BIG BLACK BOX</div><h4>The stage</h4></div></div><p>This is <b>what your friends will see</b>. Everything is a box on the stage — you, a website, a video, chat words. Drag a box to move it. Pull its corner to make it bigger.</p><div class="say">“What's on the stage is the show.”</div></article>
+      <article class="callout"><div class="callout-top"><span class="ball">6</span><div><div class="where">RIGHT · BOTTOM ROW</div><h4>Add more things</h4></div></div><p>Tap the big <b>+</b> to add something new. The tiny <b>MEM</b> word tells you how much memory the app is using.</p><div class="say">“Tap plus to add more.”</div></article>
+    </div>
+  </div>
+</section>
+
+<!-- WINDOW: TABS -->
+<section class="win" id="win-tabs" role="dialog" aria-modal="false" aria-labelledby="win-tabs-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-tabs-t">THE 6 TABS</h3><button type="button" class="win-close" data-close="win-tabs" aria-label="Close Tabs window">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Number <b>2</b>, opened up. One tap = one job. Here they all are:</p>
+    <div class="grid2">
+      <article class="mini"><div class="mini-top"><span class="ico">✎</span><h4>Text</h4><span class="no">TAB 1</span></div><p>Write <b>words on top</b> of the picture — like a title on a book cover.</p></article>
+      <article class="mini"><div class="mini-top"><span class="ico">🎬</span><h4>Video</h4><span class="no">TAB 2</span></div><p>Play a <b>video</b> — a link, a YouTube video, or one saved on your phone.</p></article>
+      <article class="mini"><div class="mini-top"><span class="ico">🖼</span><h4>Image</h4><span class="no">TAB 3</span></div><p>Put a <b>photo or logo</b> on the stage. Slide it around. Big or small.</p></article>
+      <article class="mini"><div class="mini-top"><span class="ico">📊</span><h4>Stats</h4><span class="no">TAB 4</span></div><p>See <b>simple numbers</b> about the app — like how much memory it is using.</p></article>
+      <article class="mini"><div class="mini-top"><span class="ico on">⚙</span><h4>Settings — open now</h4><span class="no">TAB 5</span></div><p>Change the thing you picked. <b>This one is open in the picture.</b> Open the Settings window to see it step by step.</p></article>
+      <article class="mini"><div class="mini-top"><span class="ico">🎨</span><h4>Appearance</h4><span class="no">TAB 6</span></div><p>Change how it <b>looks</b> — like the dark Night colours.</p></article>
+    </div>
+    <p class="win-note">Two more things live on the stage, too: <b>chat words</b> — your friends' messages drawn on top, in big letters — and <b>your camera</b>, front or back, in a box just like everything else. Your camera is just one little box on the stage: tuck it in a corner, big or small, you pick.</p>
+  </div>
+</section>
+
+<!-- WINDOW: SETTINGS -->
+<section class="win" id="win-settings" role="dialog" aria-modal="false" aria-labelledby="win-settings-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-settings-t">SETTINGS — ADD A WEBSITE</h3><button type="button" class="win-close" data-close="win-settings" aria-label="Close Settings window">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Number <b>3</b>, opened up. Let's add a website — like vdo.ninja — in 4 easy steps.</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><div class="b"><h4>Give it a name</h4><p>In the picture, its name is <b>“Web Source.”</b> A name helps you find it fast. You can call it anything you like.</p></div></div>
+      <div class="step"><span class="n">2</span><div class="b"><h4>Paste the link, press Apply</h4><p>Paste the website's link and press <b>Apply</b>. Two helpers live underneath: <b>Open in a new tab</b> — see the site really big. <b>Reload source</b> — try again if it gets stuck.</p></div></div>
+      <div class="step"><span class="n">3</span><div class="b"><h4>Pick how Discord sees it</h4><p>Pick <b>one</b> button. If it doesn't work, just try the next one — like trying keys in a door.</p><div class="pills"><span class="on">Off — don't send it</span><span>Live to feed — just this box</span><span>Capture tab — the whole tab</span><span>Window — a whole window</span><span>Screen — the whole screen</span></div></div></div>
+      <div class="step"><span class="n">4</span><div class="b"><h4>Tick the Mirror — the magic trick</h4><p>The website plays in <b>its own tiny window</b> inside the app. The app takes a <b>fast photo of it, 10 times every second</b>, and puts the photos on the stage. That turns a website into a moving video. YouTube works this same way. It uses a bit more battery.</p><p style="margin-top:8px"><b>Two more tricks:</b> <b>Zoom</b> — make the website look bigger or smaller so it fits just right. <b>Move mode</b> — drag to move the box, and your taps don't touch the website. Flip <b>Interactive</b> on when you <i>do</i> want your taps to touch it.</p><p style="margin-top:8px"><b>If the site stays black:</b> some sites say “no” to living inside another page. Try a different button in Step 3, or press Open in a new tab. Discord blocks some sites itself — so the Mirror trick is the way around.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WINDOW: FLOW -->
+<section class="win" id="win-flow" role="dialog" aria-modal="false" aria-labelledby="win-flow-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-flow-t">HOW IT WORKS</h3><button type="button" class="win-close" data-close="win-flow" aria-label="Close How It Works window">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Just 4 steps. That's all it ever does.</p>
+    <div class="flow">
+      <div class="flow-card"><span class="fn">STEP 1</span><b>Pick a thing</b><p>Camera, website, YouTube, video, picture, words, or chat.</p></div>
+      <div class="flow-card"><span class="fn">STEP 2</span><b>Put it on the stage</b><p>Move it. Size it. Stack it. The stage is the finished picture.</p></div>
+      <div class="flow-card"><span class="fn">STEP 3</span><b>Send it as one camera</b><p>The app hands the whole stage to Discord as <b>one pretend camera</b>.</p></div>
+      <div class="flow-card"><span class="fn">STEP 4</span><b>Friends watch</b><p>Your friends just see a normal camera in the call. Showtime.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- WINDOW: CHECKS -->
+<section class="win" id="win-checks" role="dialog" aria-modal="false" aria-labelledby="win-checks-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-checks-t">GOOD TO KNOW</h3><button type="button" class="win-close" data-close="win-checks" aria-label="Close Good to Know window">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Four true facts about the app.</p>
+    <div class="checks">
+      <div class="check"><span class="tick">✓</span><div><h4>Docked, in the middle</h4><p>The remote and the stage <b>open together, right in the centre</b>. They always move as one — and the app remembers where you left them.</p></div></div>
+      <div class="check"><span class="tick">✓</span><div><h4>It shrinks for tiny screens</h4><p>Splitting your screen with a friend? The whole thing <b>gets smaller to fit</b>. Nothing falls off the edge.</p></div></div>
+      <div class="check"><span class="tick">✓</span><div><h4>Tiny window? No freezing</h4><p>Shrink the app into a little floating window and the website <b>keeps playing</b>. No freeze, no refresh needed.</p></div></div>
+      <div class="check"><span class="tick">✓</span><div><h4>It remembers your work</h4><p>Where things sit, how big they are, the zoom, the dock — <b>all saved</b>. For a video file, it saves only the file's <b>name</b>, not the video itself.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WINDOW: ABOUT -->
+<section class="win" id="win-about" role="dialog" aria-modal="false" aria-labelledby="win-about-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-about-t">ABOUT</h3><button type="button" class="win-close" data-close="win-about" aria-label="Close About window">×</button></div>
+  <div class="win-body">
+    <div class="titleblock">
+      <div><span>THE APP</span><b>Creative Canvas</b></div>
+      <div><span>THIS PAGE</span><b>What the app is &amp; how it works, in easy words — one picture, six windows</b></div>
+      <div><span>VERSION</span><b>v3.2 is the one in use · v3.3 adds the dock, zoom &amp; the touch switch</b></div>
+    </div>
+    <p class="win-note">How to read this page: look at the big picture, then tap the buttons in the Guide bar. Each button opens a window like this one — drag it by its top bar, close it with the <b>×</b>, its button, or the Esc key.</p>
+  </div>
+</section>
+
+<!-- WINDOW: TERMS OF USE — must be accepted before the APK download appears -->
+<section class="win" id="win-terms" role="dialog" aria-modal="true" aria-labelledby="win-terms-t" hidden>
+  <div class="win-head"><span class="grip">⠿</span><h3 id="win-terms-t">TERMS OF USE — PLEASE READ FIRST</h3><button type="button" class="win-close" id="terms-x" aria-label="Close Terms of Use dialog">×</button></div>
+  <div class="win-body">
+    <p class="win-intro">Before you download <b>Creative Canvas v3.2</b>, please read these simple rules. The download button only appears if you tap <b>I Accept</b> at the bottom.</p>
+    <ol class="terms-list">
+      <li><b>What you're getting.</b> Creative Canvas v3.2 is an Android app (an APK file) that puts your camera, websites, videos and chat on one stage and sends it to Discord as one virtual camera.</li>
+      <li><b>It's free, and it's “as is.”</b> The app is provided as it is, with no promise that it will work perfectly on every phone. If something goes wrong, the makers aren't responsible for lost time, lost files, or a missed show.</li>
+      <li><b>Install it yourself.</b> You're downloading the file directly, not from an app store. Only install it if you trust this page. Your phone may ask you to allow installs from your browser — that's normal for an APK, and you can turn that permission back off afterwards.</li>
+      <li><b>Only show what's yours.</b> Use the app to share cameras, websites, videos and words that are yours, or that you have permission to show. Don't use it to copy or broadcast other people's work against their rules.</li>
+      <li><b>Follow the house rules where you share.</b> When you use Creative Canvas with Discord or any other service, that service's own rules still apply to you.</li>
+      <li><b>Be kind on camera.</b> Don't use the app to bother, trick or harm other people, and don't record or share anyone without their okay.</li>
+      <li><b>Your phone, your choice.</b> Nothing is installed until you open the APK yourself. You can delete the file, or uninstall the app, at any time.</li>
+    </ol>
+    <div class="terms-actions">
+      <button type="button" class="terms-accept" id="terms-accept">✓ I Accept — Show the Download</button>
+      <button type="button" class="terms-decline" id="terms-decline">Not Now</button>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  var zTop = 40;
+  function btnFor(id){ return document.querySelector('.tog[data-win="'+id+'"]'); }
+  function setBtn(id, open){
+    var b = btnFor(id); if(!b) return;
+    b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var st = b.querySelector('.t-state'); if(st) st.textContent = open ? 'OPEN — TAP TO CLOSE' : 'TAP TO OPEN';
+  }
+  function openWin(win){ win.hidden = false; win.classList.add('open'); zTop += 1; win.style.zIndex = zTop; setBtn(win.id, true); }
+  function closeWin(win){ win.classList.remove('open'); win.hidden = true; setBtn(win.id, false); }
+  function toggleWin(id){ var win = document.getElementById(id); if(!win) return; if(win.classList.contains('open')){ closeWin(win); } else { openWin(win); } }
+  var togs = document.querySelectorAll('.tog');
+  for(var i=0;i<togs.length;i++){ togs[i].addEventListener('click', function(){ toggleWin(this.getAttribute('data-win')); }); }
+  var closers = document.querySelectorAll('.win-close');
+  for(var j=0;j<closers.length;j++){ closers[j].addEventListener('click', function(){ var win = document.getElementById(this.getAttribute('data-close')); if(win) closeWin(win); var b = btnFor(this.getAttribute('data-close')); if(b) b.focus(); }); }
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var open = document.querySelectorAll('.win.open'), best = null, bz = -1;
+    for(var k=0;k<open.length;k++){ var z = parseInt(open[k].style.zIndex||'0',10); if(z>=bz){ bz=z; best=open[k]; } }
+    if(best) closeWin(best);
+  });
+  var wins = document.querySelectorAll('.win');
+  for(var m=0;m<wins.length;m++){ wins[m].addEventListener('pointerdown', function(){ zTop += 1; this.style.zIndex = zTop; }); }
+  var heads = document.querySelectorAll('.win-head');
+  for(var n=0;n<heads.length;n++){
+    heads[n].addEventListener('pointerdown', function(e){
+      if(e.target.closest('.win-close')) return;
+      var win = this.closest('.win'); if(!win) return;
+      var r = win.getBoundingClientRect();
+      win.style.left = r.left + 'px'; win.style.top = r.top + 'px'; win.style.transform = 'none';
+      var dx = e.clientX - r.left, dy = e.clientY - r.top;
+      function move(ev){
+        var x = ev.clientX - dx, y = ev.clientY - dy;
+        x = Math.max(-r.width + 90, Math.min(x, window.innerWidth - 90));
+        y = Math.max(0, Math.min(y, window.innerHeight - 48));
+        win.style.left = x + 'px'; win.style.top = y + 'px';
+      }
+      function up(){ document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); }
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      e.preventDefault();
+    });
+  }
+})();
+</script>
+<script>
+(function(){
+  var openBtn = document.getElementById('install-open');
+  var win = document.getElementById('win-terms');
+  var reveal = document.getElementById('dl-reveal');
+  var acceptBtn = document.getElementById('terms-accept');
+  var declineBtn = document.getElementById('terms-decline');
+  var xBtn = document.getElementById('terms-x');
+  if(!openBtn || !win) return;
+  function openTerms(){
+    win.hidden = false;
+    win.classList.add('open');
+    win.style.zIndex = 300;
+    if(acceptBtn) acceptBtn.focus();
+  }
+  function closeTerms(){
+    win.classList.remove('open');
+    win.hidden = true;
+    openBtn.focus();
+  }
+  openBtn.addEventListener('click', openTerms);
+  if(declineBtn) declineBtn.addEventListener('click', closeTerms);
+  if(xBtn) xBtn.addEventListener('click', closeTerms);
+  if(acceptBtn) acceptBtn.addEventListener('click', function(){
+    closeTerms();
+    if(reveal){
+      reveal.hidden = false;
+      var link = document.getElementById('dl-link');
+      if(link) link.focus();
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && win.classList.contains('open')) closeTerms();
+  });
+})();
+</script>
+</body>
+</html>
